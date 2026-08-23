@@ -1,6 +1,6 @@
 -- Noah Asgodom 
 -- 5/12/2025
--- Library Managment System
+-- Library Management System
 
 -- create database:
 create database LibraryDB;
@@ -14,9 +14,9 @@ CREATE TABLE Authors (
     BirthYear INT,
     Biography TEXT
 );
--- Add Nationalty column to Authors
+-- Add Nationality column to Authors
 ALTER TABLE Authors
-ADD COLUMN Nationaliy VARCHAR(50);
+ADD COLUMN Nationality VARCHAR(50);
 
 -- Insert data sample for Authors
 INSERT INTO Authors (AuthorID, AuthorName, Nationality, BirthYear, Biography) VALUES
@@ -74,7 +74,7 @@ CREATE TABLE Books (
     GenreID INT,
     Availability BIT DEFAULT 1,
     ShelfLocation varchar(50),
-    Languge varchar(50),
+    Language varchar(50),
     FOREIGN KEY (AuthorID) REFERENCES Authors(AuthorID),
     FOREIGN KEY (GenreID) REFERENCES Genre(GenreID)
 );
@@ -247,7 +247,7 @@ CREATE TABLE Fines (
     FOREIGN KEY (LoanID) REFERENCES Loans(LoanID)
 );
 
--- Inser the sample data for Fines
+-- Insert the sample data for Fines
 INSERT INTO Fines (FineID, LoanID, Amount, PaidStatus, Issuedate, PaidDate) VALUES
 (1, 2, 5.00, 0, '2025-11-20', NULL),
 (2, 4, 3.50, 1, '2025-11-28', '2025-12-01'),
@@ -269,7 +269,7 @@ CREATE TABLE Staff (
     ContactInformation Varchar(100)
 );
 
--- Inser the Sample Data for Staff 
+-- Insert the Sample Data for Staff
 INSERT INTO Staff (StaffID, Name, Role, HireDate, ContactInformation) VALUES
 (1, 'Linda Carter', 'Librarian', '2022-03-15', 'linda.carter@library.com'),
 (2, 'James Osei', 'Assistant Librarian', '2023-01-10', 'james.osei@library.com'),
@@ -304,23 +304,26 @@ JOIN Loans l ON b.BookID = l.BookID
 JOIN Members m ON l.MemberID = m.MemberID
 WHERE l.ReturnDate IS NULL;
 
--- Shows all the books with their availeblity and genre. 
+-- Shows all the books with their availability and genre.
 CREATE VIEW vw_BookAvailability AS
-SELECT 
-    b.Id AS BookID,
+SELECT
+    b.BookID,
     b.Title,
-    b.Isbn,
-    g.Name AS Genre,
+    b.ISBN,
+    g.GenreName AS Genre,
     b.Availability,
     b.ShelfLocation,
     b.Language
 FROM Books b
-JOIN Genres g ON b.GenreId = g.Id;
+JOIN Genre g ON b.GenreID = g.GenreID;
 
--- Tracks the loans with members and staffs. 
+-- Tracks the loans with members and staff.
+-- NOTE: Loans has no StaffID column in this schema, so this view cannot
+-- resolve StaffName as written. Add `ALTER TABLE Loans ADD COLUMN StaffID INT
+-- REFERENCES Staff(StaffID)` (and populate it) before joining to Staff here.
 CREATE VIEW vw_LoanDetails AS
-SELECT 
-    l.Id AS LoanID,
+SELECT
+    l.LoanID,
     b.Title AS BookTitle,
     m.Name AS MemberName,
     s.Name AS StaffName,
@@ -328,41 +331,41 @@ SELECT
     l.DueDate,
     l.ReturnDate
 FROM Loans l
-JOIN Books b ON l.BookId = b.Id
-JOIN Members m ON l.MemberId = m.Id
-JOIN Staff s ON l.StaffId = s.Id;
+JOIN Books b ON l.BookID = b.BookID
+JOIN Members m ON l.MemberID = m.MemberID
+JOIN Staff s ON l.StaffID = s.StaffID;
 
--- Summrizes how many books each members has borrowed 
+-- Summarizes how many books each member has borrowed
 CREATE VIEW vw_MemberBorrowing AS
-SELECT 
-    m.Id AS MemberID,
+SELECT
+    m.MemberID,
     m.Name,
-    COUNT(l.Id) AS TotalLoans
+    COUNT(l.LoanID) AS TotalLoans
 FROM Members m
-LEFT JOIN Loans l ON m.Id = l.MemberId
-GROUP BY m.Id, m.Name;
+LEFT JOIN Loans l ON m.MemberID = l.MemberID
+GROUP BY m.MemberID, m.Name;
 
--- show how many books each authores has in the library
+-- Show how many books each author has in the library
 CREATE VIEW vw_AuthorBookCount AS
-SELECT 
-    a.Id AS AuthorID,
+SELECT
+    a.AuthorID,
     a.AuthorName,
-    COUNT(b.Id) AS TotalBooks
+    COUNT(b.BookID) AS TotalBooks
 FROM Authors a
-LEFT JOIN Books b ON a.Id = b.AuthorId
-GROUP BY a.Id, a.AuthorName;
+LEFT JOIN Books b ON a.AuthorID = b.AuthorID
+GROUP BY a.AuthorID, a.AuthorName;
 
--- Summerizes loans by genre to see the catagorize most borrowd 
+-- Summarizes loans by genre to see the categories most borrowed
 CREATE VIEW vw_GenrePopularity AS
-SELECT 
-    g.Name AS Genre,
-    COUNT(l.Id) AS TotalLoans
+SELECT
+    g.GenreName AS Genre,
+    COUNT(l.LoanID) AS TotalLoans
 FROM Loans l
-JOIN Books b ON l.BookId = b.Id
-JOIN Genres g ON b.GenreId = g.Id
-GROUP BY g.Name;
+JOIN Books b ON l.BookID = b.BookID
+JOIN Genre g ON b.GenreID = g.GenreID
+GROUP BY g.GenreName;
 
--- Inner joint, Members who actual borrowed books.
+-- Inner join: members who have actually borrowed books.
 SELECT m.Name, b.Title, l.LoanDate, l.DueDate
 FROM Members m
 INNER JOIN Loans l ON m.MemberID = l.MemberID

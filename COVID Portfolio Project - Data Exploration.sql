@@ -60,7 +60,7 @@ order by TotalDeathCount desc
 
 -- BREAKING THINGS DOWN BY CONTINENT
 
--- Showing contintents with the highest death count per population
+-- Showing continents with the highest death count per population
 
 Select continent, MAX(cast(Total_deaths as int)) as TotalDeathCount
 From PortfolioProject..CovidDeaths
@@ -83,7 +83,7 @@ order by 1,2
 
 
 -- Total Population vs Vaccinations
--- Shows Percentage of Population that has recieved at least one Covid Vaccine
+-- Shows Percentage of Population that has received at least one Covid Vaccine
 
 Select dea.continent, dea.location, dea.date, dea.population, vac.new_vaccinations
 , SUM(CONVERT(int,vac.new_vaccinations)) OVER (Partition by dea.Location Order by dea.location, dea.Date) as RollingPeopleVaccinated
