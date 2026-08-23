@@ -1,3 +1,10 @@
+"""US Housing Market dashboard.
+
+A Shiny for Python app that visualizes median list price, home inventory,
+and new listings across U.S. states over time, using Zillow-style metro
+CSV extracts.
+"""
+
 from datetime import datetime
 from pathlib import Path
 
@@ -21,11 +28,13 @@ for_sale_inventory_df = pd.read_csv(Path(__file__).parent / "Metro_invt_fs_uc_sf
 # ---------------------------------------------------------------------
 # Helper functions - converting to DateTime
 # ---------------------------------------------------------------------
-def string_to_date(date_str):
+def string_to_date(date_str: str):
+    """Parse a 'YYYY-MM-DD' string into a date object."""
     return datetime.strptime(date_str, "%Y-%m-%d").date()
 
 
-def filter_by_date(df: pd.DataFrame,date_range: tuple):
+def filter_by_date(df: pd.DataFrame, date_range: tuple):
+    """Return only the rows of df whose Date falls within date_range (inclusive)."""
     rng = sorted(date_range)
     dates = pd.to_datetime(df["Date"], format="%Y-%m-%d").dt.date
     return df[(dates >= rng[0]) & (dates <= rng[1])]
@@ -35,26 +44,18 @@ def filter_by_date(df: pd.DataFrame,date_range: tuple):
 # Visualizations
 # ---------------------------------------------------------------------
 
-#for_sale_inventory_df2 = for_sale_inventory_df["StateName"].fillna("United States")
-#for_sale_inventory_df2 = for_sale_inventory_df["StateName"].drop_duplicates()
-#for_sale_inventory_df2 = for_sale_inventory_df2.sort_values().tolist()
-
-
-ui.page_opts(title= "US Housing App")
-
-
-
+ui.page_opts(title="US Housing App")
 
 
 with ui.sidebar():
-    ui.input_select("state","Filter by State", choices=STATE_CHOICES),
-    ui.input_slider("date_range","Filter by Date Range",
-                min = string_to_date("2018-3-31"),
-                max = string_to_date("2024-4-30"),
-                value = [string_to_date(x) for x in ["2018-3-31","2024-4-30"]])
-    
+    ui.input_select("state", "Filter by State", choices=STATE_CHOICES),
+    ui.input_slider("date_range", "Filter by Date Range",
+                     min=string_to_date("2018-3-31"),
+                     max=string_to_date("2024-4-30"),
+                     value=[string_to_date(x) for x in ["2018-3-31", "2024-4-30"]])
+
 with ui.layout_column_wrap():
-    with ui.value_box(showcase = icon_svg("dollar-sign")):
+    with ui.value_box(showcase=icon_svg("dollar-sign")):
         "Current Median List Price"
 
         @render.ui
@@ -71,16 +72,16 @@ with ui.layout_column_wrap():
             )
 
             res = pd.concat([states, country])
-
             res = res[res["Date"] != "index"]
 
             df = res[res["StateName"] == input.state()]
 
-            last_value = df.iloc[-1,-1]
+            last_value = df.iloc[-1, -1]
             return f"${last_value:,.0f}"
 
-    with ui.value_box(showcase = icon_svg("house")):
+    with ui.value_box(showcase=icon_svg("house")):
         "Home Inventory % Change"
+
         @render.ui
         def change():
             date_columns = median_listing_price_df.columns[6:]
@@ -95,30 +96,29 @@ with ui.layout_column_wrap():
             )
 
             res = pd.concat([states, country])
-
             res = res[res["Date"] != "index"]
 
             df = res[res["StateName"] == input.state()]
 
-            last_value = df.iloc[-1,-1]
-            second_last_value = df.iloc[-2,-1]
+            last_value = df.iloc[-1, -1]
+            second_last_value = df.iloc[-2, -1]
 
-            percentage_change = ((last_value - second_last_value)/second_last_value *100)
+            percentage_change = (last_value - second_last_value) / second_last_value * 100
             sign = "+" if percentage_change > 0 else "-"
             return f"{sign}{percentage_change:.2f}%"
 
 # Plotly visualization of Median Home Price Per State
-    
-with ui.navset_card_underline(title = "Median List Price"):
 
-    with ui.nav_panel("Plot", icon = icon_svg("chart-line")):
+with ui.navset_card_underline(title="Median List Price"):
+
+    with ui.nav_panel("Plot", icon=icon_svg("chart-line")):
 
         @render_plotly
         def list_price_plot():
             # Grouping by State Name and specifying the Date Columns
-            price_grouped = median_listing_price_df.groupby('StateName').mean(numeric_only=True)     
+            price_grouped = median_listing_price_df.groupby('StateName').mean(numeric_only=True)
             date_columns = median_listing_price_df.columns[6:]
-            price_grouped_dates = price_grouped[date_columns].reset_index()   
+            price_grouped_dates = price_grouped[date_columns].reset_index()
             price_df_for_viz = price_grouped_dates.melt(id_vars=["StateName"], var_name="Date", value_name="Value")
 
             price_df_for_viz = filter_by_date(price_df_for_viz, input.date_range())
@@ -128,13 +128,13 @@ with ui.navset_card_underline(title = "Median List Price"):
             else:
                 df = price_df_for_viz[price_df_for_viz["StateName"] == input.state()]
 
-
-            # Creating Visualization using Ployly
+            # Creating visualization using Plotly
             fig = px.line(df, x="Date", y="Value", color="StateName")
             fig.update_xaxes(title_text="")
             fig.update_yaxes(title_text="")
             return fig
-    with ui.nav_panel("Table", icon = icon_svg("table")):
+
+    with ui.nav_panel("Table", icon=icon_svg("table")):
         @render.data_frame
         def list_price_data():
             if input.state() == "United States":
@@ -145,17 +145,16 @@ with ui.navset_card_underline(title = "Median List Price"):
 
 # Plotly visualization of Homes For Sale Per State
 
-with ui.navset_card_underline(title = "Home Inventory"):
+with ui.navset_card_underline(title="Home Inventory"):
 
-    with ui.nav_panel("Plot", icon = icon_svg("chart-line")):
+    with ui.nav_panel("Plot", icon=icon_svg("chart-line")):
         @render_plotly
         def for_sale_plot():
             # Grouping by State Name and specifying the Date Columns
             for_sale_grouped = for_sale_inventory_df.groupby('StateName').sum(numeric_only=True)
             date_columns = for_sale_inventory_df.columns[6:]
-            for_sale_grouped_grouped_dates = for_sale_grouped[date_columns].reset_index()
-            for_sale_df_for_viz = for_sale_grouped_grouped_dates.melt(id_vars=["StateName"], var_name="Date", value_name="Value")
-
+            for_sale_grouped_dates = for_sale_grouped[date_columns].reset_index()
+            for_sale_df_for_viz = for_sale_grouped_dates.melt(id_vars=["StateName"], var_name="Date", value_name="Value")
 
             for_sale_df_for_viz = filter_by_date(for_sale_df_for_viz, input.date_range())
 
@@ -164,12 +163,13 @@ with ui.navset_card_underline(title = "Home Inventory"):
             else:
                 df = for_sale_df_for_viz[for_sale_df_for_viz["StateName"] == input.state()]
 
-            # Creating Visualization using Ployly
+            # Creating visualization using Plotly
             fig = px.line(df, x="Date", y="Value", color="StateName")
             fig.update_xaxes(title_text="")
             fig.update_yaxes(title_text="")
             return fig
-    with ui.nav_panel("Table", icon = icon_svg("table")):
+
+    with ui.nav_panel("Table", icon=icon_svg("table")):
         @render.data_frame
         def for_sale_data():
             if input.state() == "United States":
@@ -180,9 +180,9 @@ with ui.navset_card_underline(title = "Home Inventory"):
 
 # Plotly visualization of Listings Per State
 
-with ui.navset_card_underline(title = "New Listings"):
+with ui.navset_card_underline(title="New Listings"):
 
-    with ui.nav_panel("Plot", icon = icon_svg("chart-line")):
+    with ui.nav_panel("Plot", icon=icon_svg("chart-line")):
 
         @render_plotly
         def listings_plot():
@@ -191,22 +191,21 @@ with ui.navset_card_underline(title = "New Listings"):
             date_columns = new_listings_df.columns[6:]
             new_listings_grouped_dates = new_listings_grouped[date_columns].reset_index()
             new_listings_df_for_viz = new_listings_grouped_dates.melt(id_vars=["StateName"], var_name="Date", value_name="Value")
-            
+
             new_listings_df_for_viz = filter_by_date(new_listings_df_for_viz, input.date_range())
-            
+
             if input.state() == "United States":
                 df = new_listings_df_for_viz
             else:
                 df = new_listings_df_for_viz[new_listings_df_for_viz["StateName"] == input.state()]
 
-
-            # Creating Visualization using Ployly
+            # Creating visualization using Plotly
             fig = px.line(df, x="Date", y="Value", color="StateName")
             fig.update_xaxes(title_text="")
             fig.update_yaxes(title_text="")
             return fig
 
-    with ui.nav_panel("Table", icon = icon_svg("table")):
+    with ui.nav_panel("Table", icon=icon_svg("table")):
         @render.data_frame
         def listings_data():
             if input.state() == "United States":

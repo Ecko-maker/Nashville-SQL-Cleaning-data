@@ -179,7 +179,7 @@ FROM RowNumCTE
 WHERE row_num > 1
 ORDER BY PropertyAddress;
 
---Delete all Dublicates
+-- Delete all duplicates
 WITH RowNumCTE AS (
     SELECT 
         *,

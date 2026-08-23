@@ -1,62 +1,76 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 
 <head>
-
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Robot Delivery Tracker</title>
 
-<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
-
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 
 <style>
-#map {
-height: 100vh;
-}
-</style>
+  html, body {
+    margin: 0;
+    padding: 0;
+  }
 
+  #map {
+    height: 100vh;
+    width: 100%;
+  }
+</style>
 </head>
 
 <body>
 
-<div id="map"></div>
+<div id="map" role="application" aria-label="Live delivery robot map"></div>
 
 <script>
+  var POSITION_URL = "../data/robot_position.geojson";
+  var POLL_INTERVAL_MS = 10000;
 
-var map = L.map('map').setView([42.3598,-71.0921],16);
+  var map = L.map("map").setView([42.3598, -71.0921], 16);
 
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
-maxZoom:19
-}).addTo(map);
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    maxZoom: 19,
+    attribution: "&copy; OpenStreetMap contributors"
+  }).addTo(map);
 
-var robotMarker;
+  var robotMarker;
 
-function updateRobot(){
+  function updateRobot() {
+    fetch(POSITION_URL)
+      .then(function (response) {
+        if (!response.ok) {
+          throw new Error("Request failed with status " + response.status);
+        }
+        return response.json();
+      })
+      .then(function (data) {
+        var feature = data && data.features && data.features[0];
+        if (!feature) {
+          console.warn("robot_position.geojson had no features to plot");
+          return;
+        }
 
-fetch('../data/robot_position.geojson')
-.then(response => response.json())
-.then(data => {
+        var coords = feature.geometry.coordinates;
+        var lat = coords[1];
+        var lon = coords[0];
 
-var coords = data.features[0].geometry.coordinates;
+        if (robotMarker) {
+          robotMarker.setLatLng([lat, lon]);
+        } else {
+          robotMarker = L.marker([lat, lon]).addTo(map).bindPopup("Delivery Robot");
+        }
+      })
+      .catch(function (error) {
+        console.error("Failed to update robot position:", error);
+      });
+  }
 
-var lat = coords[1];
-var lon = coords[0];
-
-if(robotMarker){
-robotMarker.setLatLng([lat,lon])
-}
-else{
-robotMarker = L.marker([lat,lon]).addTo(map)
-.bindPopup("Delivery Robot")
-}
-
-});
-}
-
-updateRobot()
-
-setInterval(updateRobot,10000)
-
+  updateRobot();
+  setInterval(updateRobot, POLL_INTERVAL_MS);
 </script>
 
 </body>
